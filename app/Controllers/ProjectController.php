@@ -1,31 +1,39 @@
 <?php
-namespace App\Controllers;
-use App\Models\Project;
-use App\Core\View;
-use App\Helpers\Auth;
+require_once __DIR__ . '/../../config/database.php';
 
-class ProjectController {
-    public function __construct() { 
-        Auth::init(); 
-        Auth::check(); 
-    }
+// Alle projecten van de user ophalen
+function getAllProjects($userId) {
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT * FROM projects WHERE user_id = ? ORDER BY name ASC");
+    $stmt->execute([$userId]);
+    return $stmt->fetchAll();
+}
 
-    // De $id komt nu direct uit de router!
-    public function show($id) {
-        $userId = $_SESSION['user']['id'];
-        $project = Project::find($id, $userId);
-        
-        if (!$project) {
-            die("Project niet gevonden of geen toegang.");
-        }
+// Eén specifiek project ophalen (voor bewerken)
+function getProjectById($projectId, $userId) {
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT * FROM projects WHERE id = ? AND user_id = ?");
+    $stmt->execute([$projectId, $userId]);
+    return $stmt->fetch();
+}
 
-        $tasks = Project::getTasks($id, $userId);
-        $projects = Project::all($userId); 
+// Nieuw project maken
+function createProject($userId, $name, $color = '#808080') {
+    global $pdo;
+    $stmt = $pdo->prepare("INSERT INTO projects (user_id, name, color) VALUES (?, ?, ?)");
+    return $stmt->execute([$userId, $name, $color]);
+}
 
-        return View::render('projects/show', [
-            'project' => $project,
-            'tasks' => $tasks,
-            'projects' => $projects
-        ]);
-    }
+// Project bewerken
+function updateProject($projectId, $userId, $name, $color) {
+    global $pdo;
+    $stmt = $pdo->prepare("UPDATE projects SET name = ?, color = ? WHERE id = ? AND user_id = ?");
+    return $stmt->execute([$name, $color, $projectId, $userId]);
+}
+
+// Project verwijderen
+function deleteProject($projectId, $userId) {
+    global $pdo;
+    $stmt = $pdo->prepare("DELETE FROM projects WHERE id = ? AND user_id = ?");
+    return $stmt->execute([$projectId, $userId]);
 }

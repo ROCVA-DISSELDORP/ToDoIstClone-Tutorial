@@ -1,35 +1,46 @@
 <?php
-namespace App\Controllers;
-use App\Models\User;
-use App\Helpers\Auth;
-use App\Core\View;
+session_start();
+require_once __DIR__ . '/../../config/database.php';
 
-class AuthController {
-    public function __construct() { Auth::init(); }
-
-    public function showLogin() {
-        if (Auth::user()) { header('Location: /'); exit; }
-        // We renderen hier zonder de standaard layout voor een schone login pagina
-        include __DIR__ . '/../../resources/views/auth/login.php';
+// Check of gebruiker is ingelogd
+function checkLoggedIn() {
+    if (!isset($_SESSION['user_id'])) {
+        header("Location: login.php");
+        exit;
     }
+}
 
-    public function login() {
-        $user = User::findByEmail($_POST['email']);
-        if ($user && password_verify($_POST['password'], $user['password'])) {
-            $_SESSION['user'] = [
-                'id' => $user['id'],
-                'name' => $user['name'],
-                'email' => $user['email']
-            ];
-            header('Location: ' . url('/'));
-            exit;
-        }
-        $error = "Onjuiste gegevens";
-        include __DIR__ . '/../../resources/views/auth/login.php';
+// Registreren
+function register($name, $email, $password) {
+    global $pdo;
+    $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+    
+    try {
+        $stmt = $pdo->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
+        return $stmt->execute([$name, $email, $hashedPassword]);
+    } catch (Exception $e) {
+        return false; // Email waarschijnlijk al in gebruik
     }
+}
 
-    public function logout() {
-        session_destroy();
-        header('Location: ' . url('/login')); // Veranderd naar url('/login')
+// Inloggen
+function login($email, $password) {
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+
+    if ($user && password_verify($password, $user['password'])) {
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_name'] = $user['name'];
+        return true;
     }
+    return false;
+}
+
+// Uitloggen
+function logout() {
+    session_destroy();
+    header("Location: login.php");
+    exit;
 }
