@@ -23,6 +23,31 @@ function register($name, $email, $password) {
     }
 }
 
+function getUserName(){
+    $user = getUser();
+    return $user['name'] ?? null;
+}
+
+// Haalt een gebruiker op uit de database.
+// - Zonder $userId: gebruikt de huidige sessie ($_SESSION['user_id']).
+// - Met $userId: ophaal op basis van die id.
+function getUser($userId = null) {
+    global $pdo;
+
+    if ($userId === null) {
+        if (!isset($_SESSION['user_id'])) {
+            return null;
+        }
+        $userId = $_SESSION['user_id'];
+    }
+
+    $stmt = $pdo->prepare("SELECT id, name, email FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+
+    $user = $stmt->fetch();
+    return $user ?: null;
+}
+
 // Inloggen
 function login($email, $password) {
     global $pdo;
